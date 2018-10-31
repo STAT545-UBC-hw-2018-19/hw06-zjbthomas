@@ -1,0 +1,257 @@
+---
+title: "STAT 547M Homework 6"
+author: "Junbin ZHANG"
+date: "Oct 30, 2018"
+output:
+  html_document:
+    keep_md: true
+    toc: true
+    theme: readable
+---
+
+In this section, I pick three interesting tasks to complete. Two of them (*Character data* and *Write functions*) provide me a review on fundamental knowledge, while *Work with the `single` data* shows us funny results.
+
+# Bring rectangular data in
+```{r}
+## load gapminder
+suppressPackageStartupMessages(library(gapminder))
+## load tidyverse
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+# Task 1: Character data
+
+## Exercises 14.2.5
+
+### Question 1
+
+**In code that doesn’t use stringr, you’ll often see `paste()` and `paste0()`. What’s the difference between the two functions?**
+
+The usages of `paste()` and `paste0()` can be obtained by running `?paste` in console, and they are listed as followed.
+
+`paste (..., sep = " ", collapse = NULL)`
+
+`paste0(..., collapse = NULL)`
+
+So the difference is, `paste()` allows us to add an separator between strings we want to concatenate. Let's try to use `paste()` and `paste0()` to show their differences.
+  
+```{r}
+# make paste() and paste0() have the same outputs
+paste("STAT", "547M", sep = "")
+paste0("STAT", "547M")
+
+# modify the separator in paste() to have different output
+paste("STAT", "547M", sep = " ")
+```
+
+**What stringr function are they equivalent to?**
+
+`str_c()` is equaivalent to `paste()` and `paste0()`. The usage of `str_c()` is:
+
+`str_c(..., sep = "", collapse = NULL)`
+
+Here are two examples.
+
+```{r}
+# the default str_c() (without sep) is the same as paste0()
+str_c("STAT", "547M")
+
+# with sep, str_c() is the same as paste()
+str_c("STAT", "547M", sep = " ")
+```
+
+**How do the functions differ in their handling of `NA`?**  
+
+For `paste()` and `paste0()`, `NA` is directly convert to a string "NA", and concatenate with other strings. However, if `NA` is one of the input strings for `str_c()`, the output of `str_c()` will become `NA`.
+
+```{r}
+# paste() and paste0() convert NA to a string
+paste("NA is ", NA, sep = "")
+paste0("NA is ", NA)
+
+# str_c() returns NA is one of the input strings is NA
+str_c("NA is ", NA)
+```
+
+### Question 2
+
+**In your own words, describe the difference between the `sep` and `collapse` arguments to `str_c()`.**
+
+`sep` and `collapse` try to handle two different types of inputs. If we use multiple strings as input, the string defined in `sep` will be added between two neighboring input strings. If we use a vector as an input and `collapse` is defined, `str_c()` tries to combine strings inside the vector, and add the string defined in `collapse` between two neiboring strings.
+
+```{r}
+# let's create two vector to concatenate
+stat_547m <- c("STAT", "547M")
+subject_code <- c("Department", "Code")
+
+# sep is used for input strings
+str_c("STAT", "547M", sep = " ")
+
+# since str_c() concatenate vectors by item, if only one vector is input, it will not be concatenated
+str_c(stat_547m, sep = " ")
+
+# use collapse to concatenate vector
+str_c(stat_547m, collapse = " ")
+
+# we can use sep to concatenate two vectors by items
+str_c(subject_code, stat_547m, sep = ": ")
+
+# we can use sep and collapse together to concatenate two vectors into one string
+str_c(subject_code, stat_547m, sep = ": ", collapse = ", ")
+```
+
+### Question 3
+
+**Use `str_length()` and `str_sub()` to extract the middle character from a string.**
+
+```{r}
+# create two strings for this question, with odd number of characters
+string_odd <- "oddnumber"
+
+# let's define a function to get the middle index of a string with odd number of characters
+func_index_odd <- function(s) {
+  return(str_length(s) / 2 + 1)
+}
+
+# extract the middle character of string_odd, which is u
+index_odd <- func_index_odd(string_odd)
+str_sub(string_odd, index_odd, index_odd)
+```
+
+
+**What will you do if the string has an even number of characters?**
+
+We try to get the middle two characters if the number of characters in a string is an even number.
+
+```{r}
+# create two strings for this question, with even number of characters
+string_even <- "evennumber"
+
+# let's define a function to get the LEFT middle index of a string with even umber of characters
+func_index_even <- function(s) {
+  return(str_length(s) / 2)
+}
+
+# extract the middle two characters of string_even, which are nu. here we need to add 1 for the end index
+index_even <- func_index_even(string_even)
+str_sub(string_even, index_even, index_even + 1)
+```
+
+### Question 4
+
+**What does `str_wrap()` do? When might you want to use it?**
+
+According to `?str_wrap`, this function tries to wrap paragraph into multiple lines using an algorithm called "Knuth-Plass paragraph wrapping algorithm". An introduction of this algorithm can be found [here](https://www.ugrad.cs.ubc.ca/~cs490/2015W2/lectures/Knuth.pdf).
+
+Therefore, if we want to show a long paragraph, and fit it into a page, we can try to use `str_wrap()`. Here we have an example extracted form the page of [Homework 06](http://stat545.com/Classroom/assignments/hw06/hw06.html).
+
+```{r}
+# a very long paragraph
+long_paragraph <- "Exceeded the requirements in number of dimensions. Developed novel tasks that were indeed interesting and “worked”. Impressive use of R – maybe involving functions, packages or workflows that weren’t given in class materials. Impeccable organization of repo and report. You learned something new from reviewing their work and you’re eager to incorporate it into your work."
+
+# let's try to print it without wrapping
+cat(long_paragraph)
+
+# let's try to print it after wrapping, and seperate by new line
+cat(str_wrap(long_paragraph), sep = "\n")
+```
+
+The length of each line after wrapping are almost the same.
+
+### Question 5
+
+### Question 6
+
+## Exercises 14.3.1.1
+
+### Question 1
+
+### Question 2
+
+### Question 3
+
+## Exercises 14.3.2.1
+
+### Question 1
+
+### Question 2
+
+## Exercises 14.3.3.1
+
+### Question 1
+
+### Question 2
+
+### Question 3
+
+### Question 4
+
+### Question 5
+
+## Exercises 14.3.4.1
+
+### Question 1
+
+### Question 2
+
+### Question 3
+
+### Question 4
+
+## Exercises 14.3.5.1
+
+### Question 1
+
+### Question 2
+
+## Exercises 14.4.2
+
+### Question 1
+
+### Question 2
+
+## Exercises 14.4.3.1
+
+### Question 1
+
+### Question 2
+
+## Exercises 14.4.4.1
+
+### Question 1
+
+### Question 2
+
+## Exercises 14.4.5.1
+
+### Question 1
+
+### Question 2
+
+### Question 3
+
+## Exercises 14.4.6.1
+
+### Question 1
+
+### Question 2
+
+### Question 3
+
+## Exercises 14.5.1
+
+### Question 1
+
+### Question 2
+
+## Exercises 14.7.1
+
+### Question 1
+
+### Question 2
+
+# Task 2: Write functions
+
+# Task 3: Work with the `single` data
+
+# References
