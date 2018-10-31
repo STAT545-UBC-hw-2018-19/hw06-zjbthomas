@@ -698,25 +698,226 @@ The result is reasonable because word "a" has 100% vowel(s).
 
 ### Question 1
 
+**In the previous example, you might have noticed that the regular expression matched "flickered", which is not a colour. Modify the regex to fix the problem.**
+
+Let's try to reproduce the example used in [this reference](https://r4ds.had.co.nz/strings.html) first.
+
+```{r}
+# create a set of colors
+colours <- c("red", "orange", "yellow", "green", "blue", "purple")
+
+# turn color vector into a regex
+colour_match <- str_c(colours, collapse = "|")
+colour_match
+
+# view sentences with more than 1 match
+more <- sentences[str_count(sentences, colour_match) > 1]
+str_view_all(more, colour_match)
+```
+
+So in the above matches, the second sentence has a wrong match "flickered". To solve this, we can use metacharacter "\\b" in regex. "\\b" works as a  "word boundary" and performs a "whole words only" search.
+
+```{r}
+# add \b to regex
+colour_match_with_boundary <- str_c("\\b", colour_match, "\\b")
+colour_match_with_boundary
+
+# view sentences with more than 1 match
+more <- sentences[str_count(sentences, colour_match_with_boundary) > 1]
+str_view_all(more, colour_match_with_boundary)
+```
+
+The second sentence is then removed.
+
 ### Question 2
+
+**From the Harvard sentences data, extract the following words.**
+
+**The first word from each sentence.**
+
+`str_extract()` tries to extract the first match of a string, and put it into a vector.
+
+```{r}
+# there are too many possible words, so we randomly select some sentences to test
+index <- runif(20, 1, length(sentences))
+
+# apply str_extract to get the first words
+first_words <- str_extract(sentences[index], pattern = "[a-zA-Z]+")
+
+# put sentences and results together
+tibble(sentences[index], first_words) %>% 
+  knitr::kable(col.names = c("Selected Sentences", "First Word"))
+```
+
+**All words ending in `ing`.**
+
+`str_extract_all()` tries to extract all matches from a string, and put them into a vector.
+
+```{r}
+# apply str_extract_all to get words ending in "ing"
+ing_words <- str_extract_all(sentences, pattern = "\\b[a-zA-Z]+ing\\b", simplify = TRUE)
+
+# fortunately, every sentence only contains one words engding in "ing", we can simple remove all empty element
+filter_ing_words <- ing_words[ing_words != ""]
+
+# there are too many words, so we only show some of them
+head(tibble(sentences[ing_words != ""], filter_ing_words)) %>% 
+ knitr::kable(col.names = c("Selected Sentences", "Detected Words"))
+```
+
+**All plurals.**
+
+There are many possible rules for plurals, so we cover all cases by simple regex. We try to apply some rules according to [this reference](https://www.grammarly.com/blog/plural-nouns/):
+
+- All the rules only apply to words more than 3 characters.
+- "es" is added after "s", "ss", "sh", "ch", "x", or "z".
+- Words end with "sses" or "zzes" are probably plurals.
+- Words end with "ves" are probably plurals.
+- Words end with "ies" are probably plurals.
+- Words end with "oes" are probably plurals.
+- If no other rule is applied, an "s" is added to the end.
+
+```{r}
+# define pattern
+pattern <- "\\b[a-zA-Z]{3,}(ses|sses|shes|ches|xes|zes|sses|zzes|ves|ies|oes|s)\\b"
+
+# use str_detect to first filter sentences without plurals
+filter_sentences <- sentences[str_detect(sentences, pattern = pattern)]
+
+# apply str_extract_all to get plurals
+plurals <- str_extract_all(filter_sentences, pattern = pattern, simplify = TRUE)
+
+# there are too many words, so we only show some of them
+data.frame(filter_sentences, plurals)[25:35,] %>% 
+ knitr::kable(col.names = c("Selected Sentences", "Plural 1", "Plural 2", "Plural 3"))
+```
+
+We cannot avoid false positives using this method, for example "circus", "across", "this", and "makes".
 
 ## Exercises 14.4.4.1
 
 ### Question 1
 
+**Find all words that come after a "number" like "one", "two", "three" etc. Pull out both the number and the word.**
+
+We get all strings for numbers from [here](https://stackoverflow.com/questions/18332463/convert-written-number-to-number-in-r).
+
+```{r}
+# define numbers
+nums = c("zero","one","two","three","four","five","six","seven","eight","nine",
+         "ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen",
+         "twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety",
+         "hundred","thousand","million","billion","trillion")
+
+# define pattern
+pattern <- str_c(nums, collapse = "|")
+pattern <- str_c("(", pattern, ") ([^ \\.]+)")
+
+# use str_detect to first filter sentences without matches
+filter_sentences <- sentences[str_detect(sentences, pattern = pattern)]
+
+# apply str_extract_all to get all matches
+number_word <- str_extract_all(filter_sentences, pattern = pattern, simplify = TRUE)
+
+# there are too many words, so we only show some of them
+tail(data.frame(filter_sentences, number_word)) %>% 
+ knitr::kable(col.names = c("Selected Sentences", "Match 1", "Match 2"))
+```
+
 ### Question 2
+
+**Find all contractions. Separate out the pieces before and after the apostrophe.**
+
+```{r}
+# define pattern
+pattern <- "([A-Za-z]+)'([A-Za-z]+)"
+
+# use str_detect to first filter sentences without matches
+filter_sentences <- sentences[str_detect(sentences, pattern = pattern)]
+
+# apply str_extract_all to get all matches
+contractions <- str_extract_all(filter_sentences, pattern = pattern, simplify = TRUE)
+
+# separate contractions into two pieces
+pieces <- str_split(contractions, pattern = "'", simplify = TRUE)
+
+# show results as a table
+data.frame(filter_sentences, pieces) %>% 
+ knitr::kable(col.names = c("Sentences with Contractions", "Before Apostrophe", "After Apostrophe"))
+```
 
 ## Exercises 14.4.5.1
 
 ### Question 1
 
+**Replace all forward slashes in a string with backslashes.**
+
+```{r}
+# create some strings to test
+test_strings <- c("STAT/547M", "STST/545A")
+
+# replace forward slashed with backslashes
+str_replace(test_strings, pattern = "/", "\\\\")
+```
+
+Notice that in R, backslashes will be shown as "\\\\".
+
 ### Question 2
 
+**Implement a simple version of `str_to_lower()` using `replace_all()`.**
+
+```{r}
+# create some strings to test
+test_strings <- c("STAT 547M", "STST 545A")
+
+# let's see the results of str_to_lower()
+str_to_lower(test_strings)
+
+# use replace_all() to get the same results
+str_replace_all(test_strings, c("A"="a", "B"="b", "C"="c", "D"="d", "E"="e", "F"="f", "G"="g", "H"="h", "I"="i", "J"="j", "K"="k", "L"="l", "M"="m", "N"="n", "O"="o", "P"="p", "Q"="q", "R"="r", "S"="s", "T"="t", "U"="u", "V"="v", "W"="w", "X"="x", "Y"="y", "Z"="z"))
+```
+
 ### Question 3
+
+**Switch the first and last letters in words.**
+
+We use `str_replace()` to switch the letters. We split a word into three groups, the first letter, the middle part, and the third letts, then switch the other of the groups.
+
+```{r}
+# switch the first and last letters in words
+switch <- str_replace(stringr::words, pattern = "(^[a-zA-Z])([a-zA-Z]*)([a-zA-Z]$)", replacement = "\\3\\2\\1")
+
+# show some of the words
+head(switch) %>% 
+  knitr::kable(col.names = "Example Words")
+```
+
+**Which of those strings are still words?**
+
+```{r}
+# find strings that are still words using intersect(), and show part of them
+head(intersect(stringr::words, switch), 10) %>% 
+  knitr::kable(col.names = "Still Words")
+```
 
 ## Exercises 14.4.6.1
 
 ### Question 1
+
+**Split up a string like "apples, pears, and bananas" into individual components.**
+
+We use `boundary(word)` to control `str_split()`, so it can split the strings based on words.
+
+```{r}
+# create string to test
+test_string <- c("apples, pears, and bananas")
+
+# use str_split() with boundary(word)
+str_split(test_string, boundary("word")) %>% 
+  `[[`(1) %>% 
+  knitr::kable(col.names = c("Component"))
+```
+
 
 ### Question 2
 
