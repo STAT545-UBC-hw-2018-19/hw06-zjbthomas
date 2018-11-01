@@ -18,6 +18,32 @@ suppressPackageStartupMessages(library(gapminder))
 suppressPackageStartupMessages(library(tidyverse))
 ## load testthat
 suppressPackageStartupMessages(library(testthat))
+## load stringi
+suppressPackageStartupMessages(library(stringi))
+## load leaflet
+suppressPackageStartupMessages(library(leaflet))
+```
+
+# Install and load `singer` package
+
+```{r}
+## install singer
+# install.packages("devtools")
+# devtools::install_github("JoeyBernhardt/singer")
+## load singer
+suppressPackageStartupMessages(library(singer))
+```
+
+# Install and load `ggmap` package
+
+```{r}
+## install ggmap
+# install.packages("devtools")
+# devtools::install_github("dkahle/ggmap", ref = "tidyup")
+## load ggmap
+suppressPackageStartupMessages(library(ggmap))
+## register API key (please do not use this key for any other purpose, thank you)
+register_google(key = "AIzaSyBsFRsHrAmuPDmcWd-7D5AbENG6_XreKDo")
 ```
 
 # Task 1: Character data
@@ -148,7 +174,7 @@ Therefore, if we want to show a long paragraph, and fit it into a page, we can t
 
 ```{r}
 # a very long paragraph
-long_paragraph <- "Exceeded the requirements in number of dimensions. Developed novel tasks that were indeed interesting and 'worked'. Impressive use of R - maybe involving functions, packages or workflows that weren't given in class materials. Impeccable organization of repo and report. You learned something new from reviewing their work and you're eager to incorporate it into your work."
+long_paragraph <- "Exceeded the requirements in number of dimensions. Developed novel tasks that were indeed interesting and \"worked\". Impressive use of R - maybe involving functions, packages or workflows that weren't given in class materials. Impeccable organization of repo and report. You learned something new from reviewing their work and you're eager to incorporate it into your work."
 
 # let's try to print it without wrapping
 cat(long_paragraph)
@@ -918,21 +944,305 @@ str_split(test_string, boundary("word")) %>%
   knitr::kable(col.names = c("Component"))
 ```
 
-
 ### Question 2
 
+**Why is it better to split up by `boundary("word")` than " "?**
+
+Let's try to use " " to split.
+
+```{r}
+# create string to test
+test_string <- c("apples, pears, and bananas")
+
+# use str_split() with " "
+str_split(test_string, " ") %>% 
+  `[[`(1) %>% 
+  knitr::kable(col.names = c("Component with Unnessasary Characters"))
+```
+
+As shown in the results, `boundary("word")` can make sure only words are selected out, instead of having punctuations and extra whitespaces as using " ".
+
 ### Question 3
+
+**What does splitting with an empty string ("") do? Experiment, and then read the documentation.**
+
+```{r}
+# create string to test
+test_string <- c("apples, pears, and bananas")
+
+# use str_split() with " "
+str_split(test_string, "") %>% 
+  `[[`(1) %>% 
+  knitr::kable(col.names = c("Results using \"\""))
+```
+
+Based on the above results and the documentation ("An empty pattern, '', is equivalent to `boundary('character')`'"), an empty string tries to split a string into single characters.
 
 ## Exercises 14.5.1
 
 ### Question 1
 
+**How would you find all strings containing `\` with `regex()` vs. with `fixed()`?**
+
+Using regex, we need to add escape character for both R and regex, which may lead to a lot of backslashes. If `fixed()` is used, we only need to add escape character for regex, which is more intuitive.
+
+```{r}
+# create string to test
+test_string <- c("STAT\\547M")
+
+# using regex to find \
+str_view(test_string, pattern = "\\\\")
+
+# using fixed() to find \
+str_view(test_string, pattern = fixed("\\"))
+```
+
+
 ### Question 2
+
+**What are the five most common words in `sentences`?**
+
+We first try to get all words in `sentences` using `str_extract_all()` with `boundary("word")`. Then we can convert the results into a tibble and use techniques discribes in STAT 545A to tidy up the data and find the most common words.
+
+```{r}
+word_list <- sentences %>% 
+  # extract all words from sentences
+  str_extract_all(boundary("word"), simplify = TRUE) %>% 
+  # change to lower case for further analysis
+  str_to_lower()
+
+# convert results to tibble
+tibble(words = word_list) %>% 
+  # count by words
+  count(words, sort = TRUE) %>% 
+  # the first row is the total count, so we need to remove it to get the top five
+  slice(2:6) %>% 
+  # show it in table
+  knitr::kable(col.names = c("Top 5 Words", "Count"))
+```
+
 
 ## Exercises 14.7.1
 
 ### Question 1
 
+**Find the stringi functions that fullfill the following requirements.**
+
+**Requirement 1: count the number of words.**
+
+We can use `stri_count_words()` for this requirement.
+
+```{r}
+# create string to test
+test_string <- "This sentence has five words."
+
+# create a test case to test stri_count_words()
+test_that("The number of words is not correct", {
+  expect_equal(stri_count_words(test_string), 5)
+})
+```
+
+
+**Requirement 2: find duplicated strings.**
+
+We can use `stri_duplicated()` or `stri_duplicated_any()` for this requirement:
+
+- `stri_duplicated()` determines which strings in a character vector are duplicates of other elements.
+- `stri_duplicated_any()` determines if there are any duplicated strings in a character vector.
+
+We write a function using these two functions, so it can output duplicated strings if they exist.
+
+```{r}
+# write a function to output duplicated strings if they exist
+output_duplicated <- function(v) {
+  if (any(stri_duplicated(v))) {
+    return(v[stri_duplicated_any(v)])
+  } else {
+    return(NA)
+  }
+}
+
+# create two vectors to test
+vector_duplicated <- c("unique", "duplicated", "duplicated")
+vector_unique <- c("all", "are", "unique")
+
+# crate a test suite to test our function
+test_that("output_duplicated() is not correct", {
+  expect_equal(output_duplicated(vector_duplicated), "duplicated")
+  expect_equal(output_duplicated(vector_unique), NA)
+})
+```
+
+**Requirement 3: generate random text.**
+
+We can use the following two functions for this requirement:
+
+- `stri_rand_strings()`: generate a (pseudo) random strings of desired lengths. The usage of it is as followed, which means that we can use `n` to control how many texts we want to generate, use `length` to control length, and use `pattern` to even decide what we want to generate.
+
+`stri_rand_strings(n, length, pattern = "[A-Za-z0-9]")`
+
+- `stri_rand_lipsum()`: generate a (pseudo) random *lorem ipsum* text consisting of a given number of text paragraphs.
+
+```{r}
+# use stri_rand_strings() to generate random text (for example, password)
+stri_rand_strings(n = 5, length = 16, pattern = "[A-Za-z0-9!@$%\\^\\&*]") %>% 
+  knitr::kable(col.names = c("Random Text (Password)"))
+
+# use stri_rand_ipsum() to generate random text
+stri_rand_lipsum(1)
+```
+
 ### Question 2
 
-# Task 2: Work with the `single` data
+**How do you control the language that stri_sort() uses for sorting?**
+
+According to the document shown using `?stri_sort`, we can use argument `opts_collator` to control the language uses for sorting. For example, we can try to sort french words.
+
+```{r}
+# create vector to test
+french_words <- c("Bonjour", "Amour", "Bonheur", "Chat", "Chien")
+
+# use stri_sort() to sort french words, especially for Canadian French
+stri_sort(french_words, french = TRUE)
+```
+
+# Task 2: Work with the `singer` data
+
+## Task 2.1
+
+**Use `purrr` to map latitude and longitude into human readable information on the band's origin places.**
+
+
+Let's first have a preview of `single_locations` dataframe, in order to know why it is "dirty".
+```{r}
+# show previews of single_locations
+head(singer_locations) %>% 
+  # select columns we care about
+  select(track_id, latitude, longitude, name, city) %>% 
+  knitr::kable(col.names = c("Track ID", "Latitude", "Longitude", "Name", "City"))
+
+tail(singer_locations) %>% 
+  # select columns we care about
+  select(track_id, latitude, longitude, name, city) %>% 
+  knitr::kable(col.names = c("Track ID", "Latitude", "Longitude", "Name", "City"))
+```
+
+So the dataframe is "dirty" because it contains `NA` values. Therefore, the first thing we need to do is to filter out rows with `NA` latitude or longitude.
+
+```{r}
+# filter out latitude and longitude with NA
+singer_locations_no_na <- singer_locations %>% 
+  filter(!is.na(latitude) | !is.na(longitude))
+
+# show previews of filtered dataframe
+head(singer_locations_no_na) %>% 
+  # select columns we care about
+  select(track_id, latitude, longitude, name, city) %>% 
+  knitr::kable(col.names = c("Track ID", "Latitude", "Longitude", "Name", "City"))
+
+tail(singer_locations_no_na) %>% 
+  # select columns we care about
+  select(track_id, latitude, longitude, name, city) %>% 
+  knitr::kable(col.names = c("Track ID", "Latitude", "Longitude", "Name", "City"))
+```
+
+In the next step, we use `map2()` (since we need to input both latitude and longitude) of `purrr` and `revgeocode()` of `ggmap` to get the cities. Her we use `revgeocode()` as a **formula** instead of a **function** inside `map2()`. According to [this reference](https://www.rdocumentation.org/packages/purrr/versions/0.2.5/topics/map2), we need to add "~" before the function name, and use ".x" and ".y" to represent those two arguments.
+
+In addtion, since there are more than 4,000 rows in `singer_locations_no_na`, and it requires billing on Google Clouds Services, we only use the first 30 rows as an example. However, this solution can be easily extended to handle the whole dataframe.
+
+```{r, message = FALSE}
+# trim singer_locations_no_na for the top 100 rows
+trim_locations <- singer_locations_no_na %>% 
+  slice(1:30)
+
+# use ggmap to get locations
+ggmap_locations <- map2_chr(trim_locations$longitude, trim_locations$latitude, ~ revgeocode(as.numeric(c(.x, .y))))
+```
+
+Here we apply `map2_chr()` to make the results as a vector of strings instead of a list to get rid of unnecessary information.
+
+```{r}
+# show the final results
+cbind(trim_locations$city, ggmap_locations) %>% 
+  knitr::kable(col.names = c("City in `singer_locations`", "City Obtained by `ggmap`"))
+```
+
+## Task 2.2
+
+**Try to check wether the place in `city` corresponds to the information you retrieved.**
+
+Having a closer look at the above table, there is another point that make `city` dirty: the way to name a city are not the same accoss the column, for example, "UK - England - London" is a weired expression.
+
+However, we can perform some preprocessing on the data to finish this task:
+
+- We first extract words from every string, and convert them into lower case for further processing.
+- Based on some knowledge on the states of America, we replace all full state names into their abbreviations.
+
+In the end, we try to find the intersection of the original `city` and the ones obtained from `ggmap`. If there is at least one match for a row, then we get the right result.
+
+```{r}
+# create pattern for replacement
+patterns <- c("new york" = "ny", "pennsylvania" = "pa", "california" = "ca", "washington" = "wa", "louisiana" = "la")
+
+## preprocessing
+ori_words <- trim_locations$city %>%
+  # convert to lower case
+  str_to_lower() %>% 
+  # split into words
+  str_split(pattern = boundary("word")) %>%
+  # replace state names
+  map(str_replace_all, patterns)
+
+ggmap_words <- ggmap_locations %>% 
+  # convert to lower case
+  str_to_lower() %>% 
+  # split into words
+  str_split(pattern = boundary("word")) %>%
+  # replace state names
+  map(str_replace_all, patterns)
+
+## find intersection and check if there are at least one match
+correct <- map2(ori_words, ggmap_words, ~intersect(.x, .y)) %>% 
+  map(function(l) {
+    return(length(l) >= 1)
+  })
+
+# show results
+cbind(trim_locations$city, ggmap_locations, correct) %>% 
+  knitr::kable(col.names = c("City in `singer_locations`", "City Obtained by `ggmap`", "Correct?"))
+```
+
+So there is only one incorrect result at line 15.
+
+```{r}
+# print incorrect results
+cbind(trim_locations$city, ggmap_locations, correct) %>% 
+  # convert to tibble
+  as_tibble() %>% 
+  # filter to have incorrect results
+  filter(correct == FALSE) %>% 
+  # select out column correct
+  select(-correct) %>% 
+  # show table
+  knitr::kable(caption = "Incorrect Result", col.names = c("City in `singer_locations`", "City Obtained by `ggmap`"))
+```
+
+
+## Task 2.3
+
+**If you still have time, you can go visual.**
+
+```{r}
+# use leaflet to plot information
+singer_locations_no_na %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addCircles(
+    lat = singer_locations_no_na$latitude,
+    lng = singer_locations_no_na$longitude,
+    # here the popup contains city, title, artist name and year
+    popup = str_c(singer_locations_no_na$city, ": ", singer_locations_no_na$title, " by ", singer_locations_no_na$artist_name, " in ", singer_locations_no_na$year)
+  ) %>% 
+  addProviderTiles(providers$OpenStreetMap)
+```
+
